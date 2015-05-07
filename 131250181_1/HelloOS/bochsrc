@@ -1,0 +1,4 @@
+megs:32
+display_library:sdl
+floppya:1_44=cyl.img, status=inserted
+boot:floppy

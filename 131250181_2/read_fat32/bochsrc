@@ -1,0 +1,8 @@
+display_library : sdl     #mac下是 x
+
+megs: 32
+
+floppya: 1_44=freedos.img, status=inserted
+floppyb: 1_44=myfd.img, status = inserted
+
+boot: a
