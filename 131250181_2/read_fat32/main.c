@@ -7,10 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include<stdbool.h>
+#include <stdbool.h>
 #pragma pack (1)		// 按字节对齐
 #define DIR_ITEM_LEN 32	// 文件目录项长度
 #define SIZE 1024		// 保存文件名的数组的大小
+#define IMG_FILE_NAME "abc.img"
 
 typedef char			byte;	// 字节
 typedef unsigned short	word;	// 字
@@ -81,7 +82,6 @@ void printFileName(char* parent, char* name, char* ext) {
 	}
 	printStr(nameWithColor);
 	printStr("\e[0m\n");
-	strcat(allPath[pathIdx], "\e[0m\n");
 	
 	pathIdx++;
 }
@@ -165,9 +165,6 @@ void printChildren(struct DIR* root, char* parentPath) {
 			if(subRoot.name[0] == '\0')		// 根目录读取完毕
 				break;
 			
-			if(root->attr & 0x8) 
-				continue;
-				
 			count++;
 			if(count > 2) {	// 跳过前两个.和..文件
 			
@@ -203,15 +200,17 @@ void printChildren(struct DIR* root, char* parentPath) {
 /* 根据用户输入显示路径或者文件内容 */
 void find(char* input) {
 	bool exist = false;
-	for(int i = 0; i < 12; i++) {
+	for(int i = 0; i < SIZE; i++) {
 		if(!strcmp(allPath[i], input)) {
+			printStr("-----------------\n");
 			printStr(fileData[i]);
-			printStr("\n");
+			printStr("-----------------\n");
 			return;
 		}
 		if(strstr(allPath[i], input) == allPath[i]) {
 			exist = true;
 			printStr(allPath[i]);
+			printStr("\n");
 		}
 	}
 	
@@ -221,7 +220,7 @@ void find(char* input) {
 }
 
 int main() {
-	FAT12 = fopen("myfd.img", "rb");	// 打开FAT12的映像文件
+	FAT12 = fopen(IMG_FILE_NAME, "rb");	// 打开FAT12的映像文件
 	readData(11, 25, &bpb);		// 读取BPB
 	
 	// 文件分配表所在的扇区应该是(隐藏扇区+保留扇区)=0+1=第1扇区处
@@ -240,8 +239,6 @@ int main() {
 			continue;
 		if(root.name[0] == '\0')	// 根目录读取完毕
 			break;
-		if(root.attr & 0x8) 
-			continue;
 			
 		trimFileName(root.name);
 		trimFileExt(root.ext);
