@@ -11,7 +11,7 @@
 #pragma pack (1)		// 按字节对齐
 #define DIR_ITEM_LEN 32	// 文件目录项长度
 #define SIZE 1024		// 保存文件名的数组的大小
-#define IMG_FILE_NAME "abc.img"
+#define IMG_FILE_PATH "abc.img"
 
 typedef char			byte;	// 字节
 typedef unsigned short	word;	// 字
@@ -106,6 +106,23 @@ void readData(int offset, int len, void* data) {
 	fread(data, 1, len, FAT12);	// 读取len字节到data中
 }
 
+/* 判断是否是要正常显示的文件：普通文件、只读文件、目录文件 */
+bool isLegal(struct DIR* root) {
+	if(root->name[0] == '\xE5')	// 删除的文件
+		return false;
+
+	byte attr = root->attr;	// 文件属性
+	if(attr & 0x02)	// 隐藏文件
+		return false;
+	if(attr & 0x10)	// 目录文件
+		return true;
+	if(attr == 0x00)// 普通文件
+		return true;	
+	if(attr & 0x01)	// 只读文件
+		return true;
+	return true;	// 正常要显示的
+}
+
 /* 找到下一个簇号 */
 word findNextClus(word clus) {
 	int offset = FATStart + clus * 3 / 2;	// 首簇号在FAT12中的偏移字节
@@ -160,10 +177,10 @@ void printChildren(struct DIR* root, char* parentPath) {
 		for(; loc < dataOffset + bpb.bytsPerSec * bpb.secPerClus; loc += DIR_ITEM_LEN) {
 			readData(loc, DIR_ITEM_LEN, &subRoot);	// 读取根目录项
 			
-			if(subRoot.name[0] == '\xE5')	// 删除的文件
-				continue;
 			if(subRoot.name[0] == '\0')		// 根目录读取完毕
 				break;
+			if(!isLegal(&subRoot))	// 不是要读的文件
+				continue;
 			
 			count++;
 			if(count > 2) {	// 跳过前两个.和..文件
@@ -220,7 +237,7 @@ void find(char* input) {
 }
 
 int main() {
-	FAT12 = fopen(IMG_FILE_NAME, "rb");	// 打开FAT12的映像文件
+	FAT12 = fopen(IMG_FILE_PATH, "rb");	// 打开FAT12的映像文件
 	readData(11, 25, &bpb);		// 读取BPB
 	
 	// 文件分配表所在的扇区应该是(隐藏扇区+保留扇区)=0+1=第1扇区处
@@ -235,7 +252,7 @@ int main() {
 	for(; loc < DATAStart; loc += DIR_ITEM_LEN) {
 		readData(loc, DIR_ITEM_LEN, &root);		// 读取一项根目录项
 		
-		if(root.name[0] == '\xE5')	// 删除的文件
+		if(!isLegal(&root))	// 不是要读的文件
 			continue;
 		if(root.name[0] == '\0')	// 根目录读取完毕
 			break;
@@ -260,7 +277,7 @@ int main() {
 		char input[1024];
 		scanf("%s", input);
 		
-		if(!strcmp(input, "quit")) {	// 退出
+		if(!strcmp(input, ":q")) {	// 退出
 			break;
 		}
 		
