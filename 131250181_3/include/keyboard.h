@@ -25,6 +25,7 @@
 #define FLAG_ALT_L	0x2000		/* Alternate key		*/
 #define FLAG_ALT_R	0x4000		/* Alternate key		*/
 #define FLAG_PAD	0x8000		/* keys in num pad		*/
+#define FLAG_TAB	0x10000
 
 #define MASK_RAW	0x01FF		/* raw key value = code passed to tty & MASK_RAW
 					   the value can be found either in the keymap column 0

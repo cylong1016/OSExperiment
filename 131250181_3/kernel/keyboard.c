@@ -29,6 +29,7 @@ PRIVATE	int	caps_lock;	/* Caps Lock	 */
 PRIVATE	int	num_lock;	/* Num Lock	 */
 PRIVATE	int	scroll_lock;	/* Scroll Lock	 */
 PRIVATE	int	column;
+PRIVATE int	tab;
 
 PRIVATE int	caps_lock;	/* Caps Lock	 */
 PRIVATE int	num_lock;	/* Num Lock	 */
@@ -42,8 +43,8 @@ PRIVATE void    kb_ack();
 /*======================================================================*
                             keyboard_handler
  *======================================================================*/
-PUBLIC void keyboard_handler(int irq)
-{
+PUBLIC void keyboard_handler(int irq) {
+	
 	u8 scan_code = in_byte(KB_DATA);
 
 	if (kb_in.count < KB_IN_BYTES) {
@@ -60,14 +61,14 @@ PUBLIC void keyboard_handler(int irq)
 /*======================================================================*
                            init_keyboard
 *======================================================================*/
-PUBLIC void init_keyboard()
-{
+PUBLIC void init_keyboard() {
 	kb_in.count = 0;
 	kb_in.p_head = kb_in.p_tail = kb_in.buf;
 
 	shift_l	= shift_r = 0;
 	alt_l	= alt_r   = 0;
 	ctrl_l	= ctrl_r  = 0;
+	tab = 0;
 
 	caps_lock   = 0;
 	num_lock    = 1;
@@ -83,8 +84,7 @@ PUBLIC void init_keyboard()
 /*======================================================================*
                            keyboard_read
 *======================================================================*/
-PUBLIC void keyboard_read(TTY* p_tty)
-{
+PUBLIC void keyboard_read(TTY* p_tty) {
 	u8	scan_code;
 	char	output[2];
 	int	make;	/* 1: make;  0: break. */
@@ -203,6 +203,9 @@ PUBLIC void keyboard_read(TTY* p_tty)
 					set_leds();
 				}
 				break;
+			case TAB:
+				tab = (shift_l || shift_r) && make;
+				break;
 			default:
 				break;
 			}
@@ -286,6 +289,7 @@ PUBLIC void keyboard_read(TTY* p_tty)
 				key |= alt_l	? FLAG_ALT_L	: 0;
 				key |= alt_r	? FLAG_ALT_R	: 0;
 				key |= pad      ? FLAG_PAD      : 0;
+				key |= tab      ? FLAG_TAB      : 0;
 
 				in_process(p_tty, key);
 			}
@@ -296,8 +300,7 @@ PUBLIC void keyboard_read(TTY* p_tty)
 /*======================================================================*
 			    get_byte_from_kbuf
  *======================================================================*/
-PRIVATE u8 get_byte_from_kbuf()       /* 从键盘缓冲区中读取下一个字节 */
-{
+PRIVATE u8 get_byte_from_kbuf() {      /* 从键盘缓冲区中读取下一个字节 */
         u8 scan_code;
 
         while (kb_in.count <= 0) {}   /* 等待下一个字节到来 */
@@ -317,8 +320,7 @@ PRIVATE u8 get_byte_from_kbuf()       /* 从键盘缓冲区中读取下一个字
 /*======================================================================*
 				 kb_wait
  *======================================================================*/
-PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
-{
+PRIVATE void kb_wait() {	/* 等待 8042 的输入缓冲区空 */
 	u8 kb_stat;
 
 	do {
@@ -330,8 +332,7 @@ PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
 /*======================================================================*
 				 kb_ack
  *======================================================================*/
-PRIVATE void kb_ack()
-{
+PRIVATE void kb_ack() {
 	u8 kb_read;
 
 	do {
@@ -342,8 +343,7 @@ PRIVATE void kb_ack()
 /*======================================================================*
 				 set_leds
  *======================================================================*/
-PRIVATE void set_leds()
-{
+PRIVATE void set_leds() {
 	u8 leds = (caps_lock << 2) | (num_lock << 1) | scroll_lock;
 
 	kb_wait();

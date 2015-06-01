@@ -1,6 +1,7 @@
 #########################
 # Makefile for Orange'S #
 #########################
+# 2015-5-31
 
 # Entry point of Orange'S
 # It must have the same value with 'KernelEntryPointPhyAddr' in load.inc!
@@ -13,11 +14,11 @@ ENTRYOFFSET	=   0x400
 # Programs, flags, etc.
 ASM		= nasm
 DASM		= ndisasm
-CC		= gcc
-LD		= ld
+CC		= gcc -m32
+LD		= ld -m elf_i386
 ASMBFLAGS	= -I boot/include/
 ASMKFLAGS	= -I include/ -f elf
-CFLAGS		= -I include/ -c -fno-builtin
+CFLAGS		= -I include/ -c -fno-builtin -fno-stack-protector
 LDFLAGS		= -s -Ttext $(ENTRYPOINT)
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 
@@ -42,6 +43,11 @@ everything : $(ORANGESBOOT) $(ORANGESKERNEL)
 all : realclean everything
 
 image : realclean everything clean buildimg
+
+run : image start
+
+start :
+	bochs
 
 clean :
 	rm -f $(OBJS)

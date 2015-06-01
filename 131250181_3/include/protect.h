@@ -21,8 +21,7 @@ typedef struct s_descriptor		/* 共 8 个字节 */
 }DESCRIPTOR;
 
 /* 门描述符 */
-typedef struct s_gate
-{
+typedef struct s_gate {
 	u16	offset_low;	/* Offset Low */
 	u16	selector;	/* Selector */
 	u8	dcount;		/* 该字段只在调用门描述符中有效。
@@ -30,7 +29,7 @@ typedef struct s_gate
 				该双字计数字段就是用于说明这种情况发生时，要复制的双字参数的数量。 */
 	u8	attr;		/* P(1) DPL(2) DT(1) TYPE(4) */
 	u16	offset_high;	/* Offset High */
-}GATE;
+} GATE;
 
 typedef struct s_tss {
 	u32	backlink;
@@ -61,7 +60,7 @@ typedef struct s_tss {
 	u16	trap;
 	u16	iobase;	/* I/O位图基址大于或等于TSS段界限，就表示没有I/O许可位图 */
 	/*u8	iomap[2];*/
-}TSS;
+} TSS;
 
 /* GDT */
 /* 描述符索引 */
