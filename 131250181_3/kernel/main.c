@@ -90,7 +90,7 @@ void TestA() {
 		for (; i < NR_CONSOLES; i++) {
 			clear_screen(tty_table[i].p_console);
 		}
-		milli_delay(150000); // 20秒清屏
+		milli_delay(1500000); // 20秒清屏
 	}
 }
 
