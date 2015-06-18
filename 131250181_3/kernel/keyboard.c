@@ -227,8 +227,8 @@ PUBLIC void keyboard_read(TTY* p_tty) {
 						key = '-';
 						break;
 					case PAD_PLUS:
-						key = '+';
 						break;
+						key = '+';
 					case PAD_ENTER:
 						key = ENTER;
 						break;

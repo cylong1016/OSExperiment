@@ -1,0 +1,13 @@
+###############################################################
+# Configuration file for Bochs
+###############################################################
+
+# how much memory the emulated machine will have
+megs: 32
+
+display_library : sdl     #mac下是 x
+
+floppya: 1_44=a.img, status=inserted
+
+boot: a
+
