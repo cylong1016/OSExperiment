@@ -12,25 +12,28 @@ ENTRYOFFSET	=   0x400
 
 # Programs, flags, etc.
 ASM		= nasm
-DASM		= ndisasm
+DASM		= objdump
 CC		= gcc -m32
 LD		= ld -m elf_i386
 ASMBFLAGS	= -I boot/include/
 ASMKFLAGS	= -I include/ -f elf
 CFLAGS		= -I include/ -c -fno-builtin -fno-stack-protector
-LDFLAGS		= -s -Ttext $(ENTRYPOINT)
-DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
+LDFLAGS		= -Ttext $(ENTRYPOINT) -Map krnl.map
+DASMFLAGS	= -D
 
 # This Program
 ORANGESBOOT	= boot/boot.bin boot/loader.bin
 ORANGESKERNEL	= kernel.bin
-OBJS		= kernel/kernel.o kernel/syscall.o kernel/start.o kernel/main.o kernel/clock.o\
+OBJS		= kernel/kernel.o kernel/syscall.o kernel/start.o kernel/main.o\
+			kernel/clock.o kernel/keyboard.o kernel/tty.o kernel/console.o\
 			kernel/i8259.o kernel/global.o kernel/protect.o kernel/proc.o\
-			lib/kliba.o lib/klib.o lib/string.o
+			kernel/systask.o\
+			kernel/printf.o kernel/vsprintf.o\
+			lib/kliba.o lib/klib.o lib/string.o lib/misc.o
 DASMOUTPUT	= kernel.bin.asm
 
 # All Phony Targets
-.PHONY : everything final image clean realclean disasm all buildimg
+.PHONY : everything final image clean realclean disasm all buildimg run start
 
 # Default starting position
 nop :
@@ -41,11 +44,6 @@ everything : $(ORANGESBOOT) $(ORANGESKERNEL)
 all : realclean everything
 
 image : realclean everything clean buildimg
-
-run : image start
-
-start :
-	bochs
 
 clean :
 	rm -f $(OBJS)
@@ -63,6 +61,11 @@ buildimg :
 	sudo cp -fv boot/loader.bin /mnt/floppy/
 	sudo cp -fv kernel.bin /mnt/floppy
 	sudo umount /mnt/floppy
+
+start:
+	bochs
+run:	image start
+
 
 boot/boot.bin : boot/boot.asm boot/include/load.inc boot/include/fat12hdr.inc
 	$(ASM) $(ASMBFLAGS) -o $@ $<
@@ -90,6 +93,15 @@ kernel/main.o: kernel/main.c include/type.h include/const.h include/protect.h in
 kernel/clock.o: kernel/clock.c
 	$(CC) $(CFLAGS) -o $@ $<
 
+kernel/keyboard.o: kernel/keyboard.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+kernel/tty.o: kernel/tty.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+kernel/console.o: kernel/console.c
+	$(CC) $(CFLAGS) -o $@ $<
+
 kernel/i8259.o: kernel/i8259.c include/type.h include/const.h include/protect.h include/proto.h
 	$(CC) $(CFLAGS) -o $@ $<
 
@@ -104,8 +116,20 @@ kernel/protect.o: kernel/protect.c include/type.h include/const.h include/protec
 kernel/proc.o: kernel/proc.c
 	$(CC) $(CFLAGS) -o $@ $<
 
+kernel/printf.o: kernel/printf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+kernel/vsprintf.o: kernel/vsprintf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+kernel/systask.o: kernel/systask.c
+	$(CC) $(CFLAGS) -o $@ $<
+
 lib/klib.o: lib/klib.c include/type.h include/const.h include/protect.h include/string.h include/proc.h include/proto.h \
 			include/global.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+lib/misc.o: lib/misc.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 lib/kliba.o : lib/kliba.asm

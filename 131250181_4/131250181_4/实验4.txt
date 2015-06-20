@@ -1,0 +1,156 @@
+实验四
+
+本实验在orange’s的第八章的代码基础上修改,增加了不占用时间片的sys_process_sleep,系
+统调用,还有支持PV原语操作的sys_sem_p和sys_tem_v系统调用,模拟了睡眠理发师的问题
+。代码中的打印系统调用已经存在为sys_printx,而且再次基础上封装好了printf与C库中的
+prinf相媲美,省去了不好工作。
+新增的内容及解释:
+1.
+增加D.E用户进程(原来已有ABC用户进程),参考ORANGE’S 第6章6.4.6(207页)
+添加步骤:a.在task_table中增加一项(global.c).b.让NR_TASK加1(proc.h).c.定义任务堆
+栈(proc.h)d.修改STACK_SIZE_TOTAL(proc.h).e.添加新任务执行体的函数声明(proto.h
+)
+D.E进程体位于main.c 第333行至第371行。
+2.增加系统调用,Orange’s
+8.3节中提到sys.printx的系统调用,于是模仿者该系统系统调用的实现增加sys_process_sleep
+、sys_tem_p和sys_tem_v系统调用.
+步骤如下:
+1.添加函数声明,用户级系统调用(sleep,p,v)文件proto.h第105行至109行
+2.用汇编代码实现1.中添加的用户级系统调用,并设为global,模仿着printx的_NR_printx常量
+的使用,添加_NR_sleep,_NR_P,_NR_V常量,分别为2,3,4(syscall.asm第13行至第15行),添
+加函数体(syscall.asm第45行至第59行)
+3.global.c的sys_call_table的调用列表中添加新添加的系统调用(sys_process_sleep,sys_tem_p
+,sys_tem_v)并给NR_SYS_CALL(const.h第127行)设置成5
+4.查看sys_call_table的汇编实现(kernel.asm第350行至367行)发现eax代表sys_call_table的
+下标,根据此下标调用sys_call_table中的函数而call上的4个push操作分别为函数中的四个形
+参,最后一个形参为当前进程的的指针(即指向一个proc函数体的指针)
+6.模仿sys_printx函数的声明,分别对sys_process_sleep、sys_tem_p、sys_tem_v进行声明。
+更具实参的个数将最左边的两个形参为unused未使用,函数声明位于
+proto.h第98行至第100行,其中semaphore为信号量的数据结构
+7.步骤6中的三个函数体的不同实现:
+sys_process_sleep(proc.c第40行):
+基本思想:用户调用sleep函数后传入个毫秒数,在sys_process_sleep将该毫秒转化为相应的
+ticks数(即时钟中断次数),在proc结构体中已经添加sleep_ticks变量,设置该变量的数值
+,并在时钟中断促发调用的进程调度函数schedule中规定sleep_ticks不为0的进程不被分配时
+间片,且每次进程调度,该sleep_ticks都会减去1直到为0.最后返回到sleep函数,返回到goT
+oSleep函数,将剩下的时间片用循环耗尽。(currentSleep在下一次时钟中断会被设为0)
+主要代码:mainc.c
+int tick_time = milli_sec * HZ /1000;
+setSleep_ticks(tick_time,p);
+sys_tem_p与sys_tem_v主要算法和思想参照课本中3.3信号量和PV操作(课本第136页至第1
+37页),其中semaphore结构为
+struct semaphore{
+int value;
+int len;
+//信号量的值
+struct proc * list[10]; //等待队列
+};位于proc.h第75行至第80行。不同的是为实现方便将课本中的链表实现的队列改成了用数
+组实现的队列
+PUBLIC void sys_tem_p(int unused1,int unused2,struct semaphore * s,struct proc * p)
+{
+s->value--;
+int i =0;
+//信号量减1
+/*若信号量值小于0,执行P操作的进程调用sleep1(s)阻塞自己,被
+移入等待队列,转向进程调度程序*/
+if (s->value<0)
+sleep1(s);
+//sys_printx(0,0,"sdfsdf",p_proc_ready);
+}
+PUBLIC void sys_tem_v(int unused1,int unused2,struct semaphore * s,struct proc * p)
+{
+s->value++; //信号量值加1
+/*若信号量值小于等于0,则调用wakeup1(s)从信号量队列中释放一个等待信号量s的进程并
+转换成就绪态,进程则继续执行*/
+if (s->value<=0)
+wakeup1(s);
+}
+由于中断处理过程中默认关中断,因此以上PV操作均为原子操作
+睡眠理发师模拟:
+B进程为理发师,CDE为顾客,理发师处于循环体中持续提供服务,顾客只来一次
+设置全局变量:global.c 第44行至第46行
+PUBLIC int waiting = 0;
+//等候理发的顾客人数
+PUBLIC int CHAIR = 3;
+//为顾客准备的椅子数 可在检查时设定
+PUBLIC struct semaphore customers,barbers,mutex;
+在main.c的kernnel_main中为
+mutex.value = 1;
+waiting = 0;
+CHAIR = 2;
+初始化
+testB: 理发师
+void TestB()
+{
+printf("\n");
+while (1)
+{
+p(&customers);
+//判断是否有顾客,若无顾客,理发师睡眠p(&mutex);
+//若有顾客,进入临界区
+waiting--;
+//等候顾客数减1
+v(&barbers);
+//理发师准备为顾客理发
+v(&mutex);
+//退出临界区
+printf("barber cutting!\n");
+//理发师开始理发(消耗2个时间片 ticks) 10ms一次
+//时钟中断
+goToSleep(20);
+}
+}
+顾客进程:以TestC为例:
+customer1:
+void TestC()
+{
+printf("customer1 come!\n");
+p(&mutex);
+//进入临界区
+if (waiting < CHAIR)
+//判断是否有空椅子
+{
+printf("customer1 wait!\n");
+waiting++;
+//等候顾客数加1
+v(&customers);
+//唤醒理发师
+v(&mutex);
+//退出临界区
+p(&barbers);
+//理发师忙,顾客坐着等待
+printf("customer1 get service!\n");
+//否则顾客可以理发
+}
+else
+{
+v(&mutex);
+}
+printf("customer1 leaves\n");
+while (1){};
+}
+不同进程变色:
+console.c 第73行
+sys_printx会调用out_char输出在console.c中添加
+char ch_color = DEFAULT_CHAR_COLOR;
+switch(p_proc_ready->pid)
+{
+case 3:
+ch_color = 0x0C;
+break;
+case 4:
+ch_color = 0X0A;
+break;case 5:
+ch_color = 0X03;
+break;
+case 6:
+ch_color = 0X06;
+break;
+}
+第113行设置颜色
+不同的进程改变其输出颜色
+遇到的问题:
+此为TTY代码基础上改的,理发师问题的输出在2号窗口上(main.c第125行至第129行),
+在tty.c第42行设置select_console(1)默认显示第二个窗口
+为演示方便。为显示的console分配了一屏的显存空间,到底部时进行清屏,会有刷屏的效
+果。
